@@ -10,11 +10,11 @@ You can download the SDP file of the target node in just three lines of code.
 Usage
 =====
 Clone this repository and then run the following commands:
-'''
+```
   $ git clone https://github.com/taqq505/nmos-get-sdp
   $ cd nmos-get-sdp
   $ ./nmos-get-sdp {node_IP} -p {port_no}
-'''
+```
   Replace {node_IP} with the IP address of the target node.
 You can specify the port number by adding the -p option.
 
