@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import argparse
+import urllib.request
+import json
+
+def download_and_save_files(data):
+    download_count = 0
+    for item in data:
+        manifest_url = item.get('manifest_href')
+        file_name = item.get('description') + '.sdp'
+
+        try:
+            with urllib.request.urlopen(manifest_url) as response:
+                content = response.read()
+
+            with open(file_name, 'wb') as file:
+                file.write(content)
+
+            print(f"Downloaded and saved: {file_name}")
+            download_count += 1
+
+        except Exception as e:
+            print(f"Failed to download {manifest_url}: {e}")
+
+    return download_count
+
+def get_sdpfiles(node_url, latest_version):
+    senders_info = fetch_json_data(f"{node_url}/x-nmos/node/{latest_version}senders")
+    if senders_info is not None and isinstance(senders_info, list):
+        file_count = download_and_save_files(senders_info)
+        print(f"{file_count} SDP files were downloaded.")
+        return file_count
+    else:
+        print("Failed to retrieve sender information or data format is invalid.")
+        return 0
+
+def fetch_json_data(url):
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = response.read().decode('utf-8')
+            json_data = json.loads(data)
+            return json_data
+    except urllib.error.URLError as e:
+        print(f"Failed to access the API: {e}")
+        return None
+    except json.JSONDecodeError:
+        print("Failed to decode response as JSON. The response may not be in JSON format.")
+        return None
+
+def find_latest_version(version_list):
+    cleaned_versions = [v.lstrip('v').rstrip('/') for v in version_list]
+    latest_version = max(cleaned_versions, key=lambda v: list(map(int, v.split('.'))))
+    return f"v{latest_version}/"
+
+def version_check(node_url):
+    json_data = fetch_json_data(f"{node_url}/x-nmos/node/")
+    if json_data is not None and isinstance(json_data, list):
+        latest_version = find_latest_version(json_data)
+        return latest_version
+    else:
+        print("No JSON data returned from the API or data is not in expected format.")
+        return None
+
+def main(node_url):
+    print(f"Target URL: {node_url}")
+    latest_version = version_check(node_url)
+    if latest_version is not None:
+        file_count = get_sdpfiles(node_url, latest_version)
+        print(f"Total SDP files downloaded: {file_count}")
+    else:
+        print("Could not retrieve the latest version.")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Usage: nmos-sdp-get [-p] node_ip")
+    parser.add_argument('-p', '--port', type=str, default="80", help="NMOS node IS-04 port number")
+    parser.add_argument('node_ip', help='NMOS node IP address')
+    args = parser.parse_args()
+
+    node_url = f"http://{args.node_ip}:{args.port}"
+    main(node_url)
